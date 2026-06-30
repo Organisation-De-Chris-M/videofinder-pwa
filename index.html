@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5, viewport-fit=cover"/>
+  <meta name="theme-color" content="#4f98a3"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="VidéoFinder"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <title>VidéoFinder v1</title>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icon-192.png"/>
+  <style>
+    :root {
+      --bg:         #1c1b19;
+      --surface:    #201f1d;
+      --surface2:   #2d2c2a;
+      --border:     #3a3836;
+      --text:       #e8e5df;
+      --muted:      #b5b0a7;
+      --faint:      #878177;
+      --primary:    #4f98a3;
+      --primary-d:  #2f7b86;
+      --success:    #79b454;
+      --warning:    #e2a94a;
+      --error:      #dd6da8;
+      --radius:     14px;
+      --radius-sm:  9px;
+      --transition: 160ms cubic-bezier(.16,1,.3,1);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    [data-theme="light"] {
+      --bg:        #f7f6f2;
+      --surface:   #ffffff;
+      --surface2:  #f0ede8;
+      --border:    #dcd9d5;
+      --text:      #28251d;
+      --muted:     #676661;
+      --faint:     #8a8882;
+      --primary:   #01696f;
+      --primary-d: #0c4e54;
+      --success:   #437a22;
+      --warning:   #b7791f;
+      --error:     #a12c7b;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      background: var(--bg);
+      color: var(--text);
+      height: 100%;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, select, textarea { font: inherit; }
+    img { display: block; max-width: 100%; }
+    :focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+    input, select { color: var(--text); font-size: 16px; }
+
+    /* ── APP SHELL ── */
+    #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+
+    /* ── HEADER ── */
+    .app-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px;
+      background: var(--primary);
+      color: #fff;
+      flex-shrink: 0;
+      padding-top: calc(14px + env(safe-area-inset-top, 0px));
+    }
+    .app-header h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
+    .app-header .subtitle { font-size: 0.75rem; opacity: .8; }
+    .header-right { display: flex; gap: 8px; }
+    .icon-btn {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      border: none;
+      background: rgba(255,255,255,0.18);
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: grid; place-items: center;
+      transition: background var(--transition);
+      flex-shrink: 0;
+    }
+    .icon-btn:active { background: rgba(255,255,255,0.3); }
+
+    /* ── CONTENU PRINCIPAL ── */
+    #main-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+    /* ── BARRE DE RECHERCHE ── */
+    .search-bar {
+      padding: 12px 14px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; gap: 8px; align-items: center;
+      flex-shrink: 0;
+    }
+    .search-bar input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 16px;
+    }
+    .search-bar input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 20%, transparent); }
+    .search-bar select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 10px;
+      color: var(--text);
+      font-size: 14px;
+      min-height: 44px;
+    }
+    .btn-search {
+      min-height: 44px; min-width: 44px;
+      background: var(--primary); color: #fff;
+      border: none; border-radius: var(--radius-sm);
+      font-size: 1.1rem; cursor: pointer;
+      transition: background var(--transition);
+    }
+    .btn-search:active { background: var(--primary-d); }
+
+    /* ── CATÉGORIES (chips horizontaux) ── */
+    .cat-scroll {
+      display: flex; gap: 8px;
+      overflow-x: auto; scroll-snap-type: x mandatory;
+      padding: 10px 14px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .cat-scroll::-webkit-scrollbar { display: none; }
+    .cat-chip {
+      scroll-snap-align: start;
+      flex-shrink: 0;
+      padding: 6px 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; white-space: nowrap;
+      transition: background var(--transition), color var(--transition), border-color var(--transition);
+    }
+    .cat-chip.active {
+      background: color-mix(in oklab, var(--primary) 18%, var(--surface2));
+      color: var(--primary);
+      border-color: color-mix(in oklab, var(--primary) 40%, transparent);
+    }
+
+    /* ── RÉSULTATS ── */
+    .results-area {
+      flex: 1; overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 12px 14px;
+      padding-bottom: calc(70px + var(--safe-bottom));
+    }
+    .results-count {
+      font-size: 12px; color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .sites-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 380px) { .sites-grid { grid-template-columns: 1fr; } }
+    @media (min-width: 600px) { .sites-grid { grid-template-columns: repeat(3, 1fr); } }
+
+    /* ── CARTE SITE ── */
+    .site-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .site-card:active { border-color: var(--primary); }
+    .site-card.is-fav { border-color: color-mix(in oklab, var(--warning) 50%, transparent); }
+    .card-top {
+      background: var(--primary);
+      padding: 10px 12px 8px;
+    }
+    .card-icon { font-size: 1.5rem; margin-bottom: 4px; }
+    .card-name { font-size: 14px; font-weight: 700; color: #fff; line-height: 1.2; }
+    .card-cat {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 10px; font-weight: 700;
+      background: rgba(0,0,0,0.22);
+      color: rgba(255,255,255,0.9);
+      padding: 2px 7px; border-radius: 99px;
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+    .card-body { padding: 10px 12px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .card-url {
+      font-size: 11px; color: var(--muted);
+      word-break: break-all;
+      display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .card-desc {
+      font-size: 12px; color: var(--faint);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      flex: 1;
+    }
+    .card-actions {
+      display: flex; gap: 5px;
+      margin-top: 8px; flex-wrap: wrap;
+    }
+    .card-btn {
+      flex: 1; min-height: 36px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 11px; font-weight: 700;
+      cursor: pointer;
+      transition: background var(--transition);
+      white-space: nowrap;
+    }
+    .card-btn:active { background: color-mix(in oklab, var(--primary) 15%, var(--surface2)); color: var(--primary); }
+    .card-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .card-btn.primary:active { background: var(--primary-d); }
+    .card-btn.fav-active { background: color-mix(in oklab, var(--warning) 20%, var(--surface2)); color: var(--warning); border-color: color-mix(in oklab, var(--warning) 40%, transparent); }
+
+    /* ── ÉTAT VIDE ── */
+    .empty-state {
+      text-align: center; padding: 48px 24px; color: var(--muted);
+    }
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state h3 { font-size: 1.1rem; color: var(--text); margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
+    .btn-add-big {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 28px;
+      background: var(--primary); color: #fff;
+      border: none; border-radius: var(--radius);
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: background var(--transition);
+    }
+    .btn-add-big:active { background: var(--primary-d); }
+
+    /* ── BOTTOM NAV ── */
+    .bottom-nav {
+      display: flex;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding-bottom: var(--safe-bottom);
+      flex-shrink: 0;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      z-index: 50;
+    }
+    .nav-btn {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 3px; padding: 10px 4px;
+      border: none; background: transparent;
+      color: var(--muted); font-size: 10px; font-weight: 600;
+      cursor: pointer; transition: color var(--transition);
+      min-height: 56px;
+    }
+    .nav-btn .nav-icon { font-size: 1.3rem; }
+    .nav-btn.active { color: var(--primary); }
+    .nav-btn:active { color: var(--primary); }
+
+    /* ── ÉCRAN PIN ── */
+    #pin-screen {
+      position: fixed; inset: 0; z-index: 1000;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 24px;
+      padding-top: calc(24px + env(safe-area-inset-top, 0px));
+    }
+    .pin-icon { font-size: 3.5rem; margin-bottom: 8px; }
+    .pin-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+    .pin-subtitle { font-size: 14px; color: var(--muted); margin-bottom: 32px; text-align: center; }
+    .pin-dots { display: flex; gap: 16px; margin-bottom: 32px; }
+    .pin-dot {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid var(--border);
+      background: transparent;
+      transition: background var(--transition), border-color var(--transition);
+    }
+    .pin-dot.filled { background: var(--primary); border-color: var(--primary); }
+    .pin-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 280px; }
+    .pin-key {
+      height: 64px; border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text); font-size: 1.4rem; font-weight: 700;
+      cursor: pointer; transition: background var(--transition), transform var(--transition);
+      display: grid; place-items: center;
+    }
+    .pin-key:active { background: var(--surface2); transform: scale(.95); }
+    .pin-key.confirm { background: var(--primary); color: #fff; border-color: var(--primary); font-size: 1.2rem; }
+    .pin-key.delete { background: var(--surface2); font-size: 1.2rem; }
+    .pin-error { color: var(--error); font-size: 13px; margin-top: 12px; min-height: 20px; text-align: center; }
+
+    /* ── MODALES ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(4px);
+      display: none; align-items: flex-end; justify-content: center;
+      padding: 0;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      width: 100%; max-width: 600px;
+      max-height: 92vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-radius: 22px 22px 0 0;
+      padding: 20px 20px calc(20px + var(--safe-bottom));
+      animation: slideUp .25s cubic-bezier(.16,1,.3,1);
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-handle {
+      width: 40px; height: 4px;
+      background: var(--border); border-radius: 99px;
+      margin: 0 auto 18px;
+    }
+    .modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 18px; }
+
+    /* ── FORMULAIRE ── */
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .field label { font-size: 13px; font-weight: 700; color: var(--text); }
+    .field input, .field select, .field textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: 16px;
+      width: 100%;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: var(--primary); outline: none;
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 18%, transparent);
+    }
+    .field textarea { min-height: 80px; resize: vertical; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+    .btn { flex: 1; min-height: 48px; border-radius: var(--radius-sm); border: none; font-size: 15px; font-weight: 700; cursor: pointer; transition: background var(--transition); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:active { background: var(--primary-d); }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:active { background: var(--border); }
+    .btn-danger { background: color-mix(in oklab, var(--error) 15%, var(--surface2)); color: var(--error); border: 1px solid color-mix(in oklab, var(--error) 30%, transparent); }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed; bottom: calc(72px + var(--safe-bottom)); left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--text); color: var(--bg);
+      padding: 10px 20px; border-radius: 99px;
+      font-size: 13px; font-weight: 700;
+      z-index: 500; opacity: 0;
+      transition: opacity .2s, transform .2s;
+      white-space: nowrap; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── PANNEAU FAVORIS / HISTORIQUE ── */
+    .panel-list { display: flex; flex-direction: column; gap: 8px; }
+    .panel-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px;
+      background: var(--surface2); border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+    .panel-item-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .panel-item-body { flex: 1; min-width: 0; }
+    .panel-item-name { font-size: 14px; font-weight: 700; }
+    .panel-item-sub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .panel-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .panel-item-btn {
+      width: 36px; height: 36px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text); font-size: 1rem;
+      cursor: pointer; display: grid; place-items: center;
+    }
+    .panel-item-btn:active { background: var(--surface2); }
+
+    /* ── PARAMÈTRES ── */
+    .settings-section { margin-bottom: 20px; }
+    .settings-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+    .settings-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px;
+      background: var(--surface2); border-radius: var(--radius-sm);
+      border: 1px solid var(--border); margin-bottom: 6px;
+    }
+    .settings-row-label { font-size: 14px; font-weight: 600; }
+    .settings-row-sub { font-size: 12px; color: var(--muted); }
+
+    /* ── TOGGLE SWITCH ── */
+    .toggle { position: relative; width: 48px; height: 26px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0;
+      background: var(--border); border-radius: 99px;
+      transition: background var(--transition); cursor: pointer;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute;
+      width: 20px; height: 20px; left: 3px; bottom: 3px;
+      background: #fff; border-radius: 50%;
+      transition: transform var(--transition);
+    }
+    .toggle input:checked + .toggle-slider { background: var(--primary); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(22px); }
+
+    /* ── SHARE SHEET ── */
+    .share-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .share-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 16px 8px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); cursor: pointer;
+      font-size: 12px; font-weight: 700; color: var(--text);
+      transition: background var(--transition);
+    }
+    .share-btn .share-icon { font-size: 1.6rem; }
+    .share-btn:active { background: color-mix(in oklab, var(--primary) 12%, var(--surface2)); color: var(--primary); }
+
+    /* ── INSTALL BANNER ── */
+    #install-banner {
+      display: none;
+      align-items: center; gap: 12px;
+      padding: 12px 14px;
+      background: color-mix(in oklab, var(--primary) 14%, var(--surface));
+      border-bottom: 1px solid color-mix(in oklab, var(--primary) 30%, transparent);
+      flex-shrink: 0;
+    }
+    #install-banner.show { display: flex; }
+    #install-banner p { flex: 1; font-size: 13px; font-weight: 600; }
+    #install-banner button {
+      padding: 8px 16px; border-radius: var(--radius-sm);
+      border: none; font-size: 13px; font-weight: 700;
+      cursor: pointer;
+    }
+    #install-btn { background: var(--primary); color: #fff; }
+    #install-dismiss { background: var(--surface2); color: var(--text); }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ ÉCRAN PIN ══ -->
+<div id="pin-screen" role="dialog" aria-modal="true" aria-label="Code PIN">
+  <div class="pin-icon">🎬</div>
+  <h1 class="pin-title">VidéoFinder v1</h1>
+  <p class="pin-subtitle">Entrez votre code PIN pour accéder<br>à votre gestionnaire de favoris</p>
+  <div class="pin-dots" id="pinDots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-keypad" id="pinKeypad">
+    <button class="pin-key" data-k="1">1</button>
+    <button class="pin-key" data-k="2">2</button>
+    <button class="pin-key" data-k="3">3</button>
+    <button class="pin-key" data-k="4">4</button>
+    <button class="pin-key" data-k="5">5</button>
+    <button class="pin-key" data-k="6">6</button>
+    <button class="pin-key" data-k="7">7</button>
+    <button class="pin-key" data-k="8">8</button>
+    <button class="pin-key" data-k="9">9</button>
+    <button class="pin-key delete" id="pinDel">⌫</button>
+    <button class="pin-key" data-k="0">0</button>
+    <button class="pin-key confirm" id="pinConfirm">✓</button>
+  </div>
+  <p class="pin-error" id="pinError"></p>
+</div>
+
+<!-- ══ APP PRINCIPALE ══ -->
+<div id="app" hidden>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div>
+      <h1>🎬 VidéoFinder v1</h1>
+      <div class="subtitle">Gestionnaire de favoris vidéo</div>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" id="themeBtn" title="Changer le thème">☀️</button>
+      <button class="icon-btn" id="addSiteHeaderBtn" title="Ajouter un site">➕</button>
+    </div>
+  </header>
+
+  <!-- Bannière installation PWA -->
+  <div id="install-banner">
+    <p>📲 Installez l'app sur votre écran d'accueil !</p>
+    <button id="install-btn">Installer</button>
+    <button id="install-dismiss">✕</button>
+  </div>
+
+  <!-- Contenu principal -->
+  <div id="main-content">
+
+    <!-- Barre de recherche -->
+    <div class="search-bar">
+      <input type="search" id="searchInput" placeholder="Rechercher un site…" autocomplete="off" autocorrect="off"/>
+      <select id="catFilter">
+        <option value="Tous">Tous</option>
+      </select>
+      <button class="btn-search" id="searchBtn" aria-label="Rechercher">🔍</button>
+    </div>
+
+    <!-- Chips catégories -->
+    <div class="cat-scroll" id="catChips" role="tablist" aria-label="Catégories"></div>
+
+    <!-- Résultats -->
+    <div class="results-area" id="resultsArea">
+      <div class="results-count" id="resultsCount"></div>
+      <div class="sites-grid" id="sitesGrid"></div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav" aria-label="Navigation principale">
+    <button class="nav-btn active" id="navSearch" data-tab="search">
+      <span class="nav-icon">🔍</span>
+      <span>Recherche</span>
+    </button>
+    <button class="nav-btn" id="navFavs" data-tab="favs">
+      <span class="nav-icon">★</span>
+      <span>Favoris</span>
+    </button>
+    <button class="nav-btn" id="navHistory" data-tab="history">
+      <span class="nav-icon">🕐</span>
+      <span>Historique</span>
+    </button>
+    <button class="nav-btn" id="navSettings" data-tab="settings">
+      <span class="nav-icon">⚙️</span>
+      <span>Réglages</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ══ MODAL AJOUT/EDIT SITE ══ -->
+<div class="modal-backdrop" id="siteModal" role="dialog" aria-modal="true" aria-label="Ajouter un site">
+  <div class="modal" id="siteModalContent">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title" id="siteModalTitle">➕ Ajouter un site</h2>
+    <div class="field">
+      <label for="siteNom">Nom du site *</label>
+      <input type="text" id="siteNom" placeholder="Ex : Mon Site Vidéo" autocomplete="off"/>
+    </div>
+    <div class="field">
+      <label for="siteUrl">URL *</label>
+      <input type="url" id="siteUrl" placeholder="https://www.example.com" autocomplete="off" inputmode="url"/>
+    </div>
+    <div class="field">
+      <label for="siteCat">Catégorie *</label>
+      <input type="text" id="siteCat" placeholder="Ex : Films, Musique, Sport…" list="catList" autocomplete="off"/>
+      <datalist id="catList"></datalist>
+    </div>
+    <div class="field">
+      <label for="siteDesc">Description (optionnel)</label>
+      <textarea id="siteDesc" placeholder="Courte description du site…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="siteModalCancel">Annuler</button>
+      <button class="btn btn-primary" id="siteModalSave">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL PARTAGE ══ -->
+<div class="modal-backdrop" id="shareModal" role="dialog" aria-modal="true" aria-label="Partager">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title" id="shareModalTitle">↗ Partager</h2>
+    <div class="share-grid" id="shareGrid"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="shareModalClose">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL SYNC QR ══ -->
+<div class="modal-backdrop" id="syncModal" role="dialog" aria-modal="true" aria-label="Synchronisation">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title">📱 Synchronisation</h2>
+    <div class="field">
+      <label>Code d'export (copiez-le sur l'autre appareil)</label>
+      <textarea id="syncExportCode" readonly style="font-size:11px; word-break:break-all;"></textarea>
+    </div>
+    <button class="btn btn-primary" id="copySyncCode" style="margin-bottom:14px;">📋 Copier le code</button>
+    <div class="field">
+      <label for="syncImportInput">Importer via code</label>
+      <textarea id="syncImportInput" placeholder="Collez le code ici…" style="font-size:11px;"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="syncModalClose">Fermer</button>
+      <button class="btn btn-primary" id="syncImportBtn">📥 Importer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOAST ══ -->
+<div class="toast" id="toast" aria-live="polite"></div>
+
+<script>
+'use strict';
+
+// ─── CONSTANTES ───
+const PIN_CORRECT = '2187';
+const LS_SITES    = 'vf1_sites';
+const LS_FAVS     = 'vf1_favs';
+const LS_HIST     = 'vf1_hist';
+const LS_THEME    = 'vf1_theme';
+const LS_AUTH     = 'vf1_auth';
+const MAX_HIST    = 20;
+
+// ─── ÉTAT ───
+let sites         = loadJSON(LS_SITES, []);
+let favs          = loadJSON(LS_FAVS, []);
+let history       = loadJSON(LS_HIST, []);
+let currentTheme  = localStorage.getItem(LS_THEME) || 'dark';
+let currentCat    = 'Tous';
+let searchQuery   = '';
+let editIndex     = -1;
+let toastTimer    = null;
+let deferredPrompt = null;
+let currentTab    = 'search';
+
+// ─── UTILITAIRES ───
+function loadJSON(key, def) {
+  try { return JSON.parse(localStorage.getItem(key)) || def; }
+  catch { return def; }
+}
+function saveJSON(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+function openModal(id) {
+  const el = document.getElementById(id);
+  el.classList.add('open');
+  el.setAttribute('aria-hidden','false');
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('open');
+  el.setAttribute('aria-hidden','true');
+}
+function getAllCategories() {
+  const cats = new Set();
+  sites.forEach(s => { if (s.categorie) cats.add(s.categorie); });
+  return ['Tous', ...Array.from(cats).sort()];
+}
+function isFav(url) { return favs.some(f => f.url === url); }
+function getFavIndex(url) { return favs.findIndex(f => f.url === url); }
+
+// ─── THÈME ───
+function applyTheme(theme) {
+  currentTheme = theme;
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem(LS_THEME, theme);
+  document.getElementById('themeBtn').textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+applyTheme(currentTheme);
+
+document.getElementById('themeBtn').addEventListener('click', () => {
+  applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+});
+
+// ─── PIN ───
+let pinValue = '';
+let pinAttempts = 0;
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById(`d${i}`).classList.toggle('filled', i < pinValue.length);
+  }
+}
+
+function checkPin() {
+  if (pinValue === PIN_CORRECT) {
+    document.getElementById('pin-screen').style.display = 'none';
+    document.getElementById('app').hidden = false;
+    localStorage.setItem(LS_AUTH, Date.now());
+    initApp();
+  } else {
+    pinAttempts++;
+    pinValue = '';
+    updatePinDots();
+    const errEl = document.getElementById('pinError');
+    errEl.textContent = `Code PIN incorrect — tentative ${pinAttempts}.`;
+    navigator.vibrate?.([200, 100, 200]);
+    setTimeout(() => { errEl.textContent = ''; }, 2500);
+  }
+}
+
+// Vérif session récente (30 min)
+const lastAuth = parseInt(localStorage.getItem(LS_AUTH) || '0');
+if (Date.now() - lastAuth < 30 * 60 * 1000) {
+  document.getElementById('pin-screen').style.display = 'none';
+  document.getElementById('app').hidden = false;
+  initApp();
+}
+
+document.querySelectorAll('.pin-key[data-k]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (pinValue.length < 4) {
+      pinValue += btn.dataset.k;
+      updatePinDots();
+      navigator.vibrate?.(30);
+      if (pinValue.length === 4) setTimeout(checkPin, 150);
+    }
+  });
+});
+document.getElementById('pinDel').addEventListener('click', () => {
+  pinValue = pinValue.slice(0, -1);
+  updatePinDots();
+});
+document.getElementById('pinConfirm').addEventListener('click', () => {
+  if (pinValue.length === 4) checkPin();
+});
+
+// ─── INITIALISATION ───
+function initApp() {
+  renderCatChips();
+  refreshCatFilter();
+  renderSites();
+  initNav();
+}
+
+// ─── NAVIGATION BOTTOM ───
+function initNav() {
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  const area = document.getElementById('resultsArea');
+  const searchBar = document.querySelector('.search-bar');
+  const catScroll = document.querySelector('.cat-scroll');
+
+  searchBar.style.display  = tab === 'search' ? '' : 'none';
+  catScroll.style.display  = tab === 'search' ? '' : 'none';
+
+  if (tab === 'search') {
+    document.getElementById('resultsCount').style.display = '';
+    renderSites();
+  } else if (tab === 'favs') {
+    renderFavsPanel(area);
+  } else if (tab === 'history') {
+    renderHistoryPanel(area);
+  } else if (tab === 'settings') {
+    renderSettingsPanel(area);
+  }
+}
+
+// ─── CATÉGORIES CHIPS ───
+function renderCatChips() {
+  const cats = getAllCategories();
+  const container = document.getElementById('catChips');
+  container.innerHTML = '';
+  cats.forEach(cat => {
+    const chip = document.createElement('button');
+    chip.className = 'cat-chip' + (cat === currentCat ? ' active' : '');
+    chip.textContent = cat;
+    chip.role = 'tab';
+    chip.setAttribute('aria-selected', cat === currentCat);
+    chip.addEventListener('click', () => {
+      currentCat = cat;
+      document.querySelectorAll('.cat-chip').forEach(c => {
+        c.classList.toggle('active', c.textContent === cat);
+        c.setAttribute('aria-selected', c.textContent === cat);
+      });
+      document.getElementById('catFilter').value = cat;
+      renderSites();
+    });
+    container.appendChild(chip);
+  });
+}
+
+function refreshCatFilter() {
+  const sel = document.getElementById('catFilter');
+  const cats = getAllCategories();
+  sel.innerHTML = cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  sel.value = currentCat;
+}
+
+function refreshCatList() {
+  const dl = document.getElementById('catList');
+  const cats = getAllCategories().filter(c => c !== 'Tous');
+  dl.innerHTML = cats.map(c => `<option value="${esc(c)}"/>`).join('');
+}
+
+// ─── RENDU SITES ───
+function getFilteredSites() {
+  let result = [...sites];
+  if (currentCat !== 'Tous') result = result.filter(s => s.categorie === currentCat);
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    result = result.filter(s =>
+      s.nom?.toLowerCase().includes(q) ||
+      s.url?.toLowerCase().includes(q) ||
+      s.description?.toLowerCase().includes(q) ||
+      s.categorie?.toLowerCase().includes(q)
+    );
+  }
+  return result;
+}
+
+function renderSites() {
+  const grid = document.getElementById('sitesGrid');
+  const countEl = document.getElementById('resultsCount');
+  const filtered = getFilteredSites();
+
+  countEl.textContent = `${filtered.length} site(s)`;
+  countEl.style.display = '';
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '';
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.style.gridColumn = '1 / -1';
+    empty.innerHTML = `
+      <div class="empty-icon">🎬</div>
+      <h3>${searchQuery ? 'Aucun résultat' : 'Aucun site enregistré'}</h3>
+      <p>${searchQuery ? 'Aucun site ne correspond à votre recherche.' : 'Commencez par ajouter vos sites favoris en cliquant sur le bouton ci-dessous.'}</p>
+      ${!searchQuery ? `<button class="btn-add-big" id="emptyAddBtn">➕ Ajouter un site</button>` : ''}`;
+    grid.appendChild(empty);
+    document.getElementById('emptyAddBtn')?.addEventListener('click', () => openAddModal());
+    return;
+  }
+
+  grid.innerHTML = filtered.map((site, i) => {
+    const realIdx = sites.indexOf(site);
+    const fav = isFav(site.url);
+    const urlShort = (site.url || '').replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
+    return `
+      <div class="site-card${fav ? ' is-fav' : ''}" data-idx="${realIdx}">
+        <div class="card-top">
+          <div class="card-icon">🌐</div>
+          <div class="card-name">${esc(site.nom)}</div>
+          <span class="card-cat">${esc(site.categorie || '')}</span>
+        </div>
+        <div class="card-body">
+          <div class="card-url">${esc(urlShort)}</div>
+          ${site.description ? `<div class="card-desc">${esc(site.description)}</div>` : '<div class="card-desc"></div>'}
+          <div class="card-actions">
+            <button class="card-btn primary" onclick="openSite(${realIdx})">🌐 Ouvrir</button>
+            <button class="card-btn${fav ? ' fav-active' : ''}" onclick="toggleFav(${realIdx}, this)">${fav ? '★' : '☆'}</button>
+            <button class="card-btn" onclick="openEditModal(${realIdx})">✏</button>
+            <button class="card-btn" onclick="deleteSite(${realIdx})">🗑</button>
+            <button class="card-btn" onclick="openShare(${realIdx})">↗</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ─── ACTIONS SITES ───
+window.openSite = function(idx) {
+  const site = sites[idx];
+  if (!site?.url) return;
+  addToHistory(site);
+  window.open(site.url, '_blank', 'noopener,noreferrer');
+  showToast(`Ouverture de ${site.nom}…`);
+};
+
+window.toggleFav = function(idx, btn) {
+  const site = sites[idx];
+  if (!site) return;
+  const fi = getFavIndex(site.url);
+  if (fi >= 0) {
+    favs.splice(fi, 1);
+    btn.textContent = '☆';
+    btn.classList.remove('fav-active');
+    btn.closest('.site-card').classList.remove('is-fav');
+    showToast('Retiré des favoris.');
+  } else {
+    favs.push({...site, ajouté_le: new Date().toISOString()});
+    btn.textContent = '★';
+    btn.classList.add('fav-active');
+    btn.closest('.site-card').classList.add('is-fav');
+    showToast('★ Ajouté aux favoris !');
+    // Animation flash
+    const card = btn.closest('.site-card');
+    card.style.boxShadow = `0 0 0 3px var(--warning)`;
+    setTimeout(() => card.style.boxShadow = '', 800);
+  }
+  saveJSON(LS_FAVS, favs);
+};
+
+window.deleteSite = function(idx) {
+  if (!confirm(`Supprimer "${sites[idx]?.nom}" ?`)) return;
+  sites.splice(idx, 1);
+  saveJSON(LS_SITES, sites);
+  renderCatChips();
+  refreshCatFilter();
+  renderSites();
+  showToast('Site supprimé.');
+};
+
+window.openShare = function(idx) {
+  const site = sites[idx];
+  if (!site) return;
+  const modal = document.getElementById('shareModal');
+  document.getElementById('shareModalTitle').textContent = `↗ ${site.nom}`;
+  const grid = document.getElementById('shareGrid');
+  const resume = `${site.nom}\n${site.url}\n${site.description || ''}`;
+  grid.innerHTML = `
+    <button class="share-btn" onclick="copyText('${esc(site.url)}','Lien copié !')"><span class="share-icon">📋</span>Copier le lien</button>
+    <button class="share-btn" onclick="copyText(\`${esc(resume)}\`,'Résumé copié !')"><span class="share-icon">📝</span>Copier le résumé</button>
+    <button class="share-btn" onclick="window.open('${esc(site.url)}','_blank','noopener')"><span class="share-icon">🌐</span>Ouvrir</button>
+    <button class="share-btn" onclick="nativeShare('${esc(site.nom)}','${esc(site.url)}')"><span class="share-icon">↗</span>Partager</button>`;
+  openModal('shareModal');
+};
+
+window.copyText = function(text, msg) {
+  navigator.clipboard?.writeText(text).then(() => showToast(msg)).catch(() => showToast('Copie impossible.'));
+};
+
+window.nativeShare = function(title, url) {
+  if (navigator.share) {
+    navigator.share({title, url}).catch(() => {});
+  } else {
+    copyText(url, 'Lien copié !');
+  }
+};
+
+document.getElementById('shareModalClose').addEventListener('click', () => closeModal('shareModal'));
+
+// ─── RECHERCHE ───
+document.getElementById('searchInput').addEventListener('input', e => {
+  searchQuery = e.target.value.trim();
+  renderSites();
+});
+document.getElementById('searchBtn').addEventListener('click', () => {
+  searchQuery = document.getElementById('searchInput').value.trim();
+  if (searchQuery) addToHistory({nom: searchQuery, url: '', categorie: currentCat});
+  renderSites();
+});
+document.getElementById('catFilter').addEventListener('change', e => {
+  currentCat = e.target.value;
+  renderCatChips();
+  renderSites();
+});
+
+// ─── MODAL AJOUT / EDIT ───
+function openAddModal() {
+  editIndex = -1;
+  document.getElementById('siteModalTitle').textContent = '➕ Ajouter un site';
+  document.getElementById('siteNom').value = '';
+  document.getElementById('siteUrl').value = '';
+  document.getElementById('siteCat').value = '';
+  document.getElementById('siteDesc').value = '';
+  refreshCatList();
+  openModal('siteModal');
+  setTimeout(() => document.getElementById('siteNom').focus(), 300);
+}
+
+window.openEditModal = function(idx) {
+  editIndex = idx;
+  const s = sites[idx];
+  document.getElementById('siteModalTitle').textContent = '✏ Modifier le site';
+  document.getElementById('siteNom').value  = s.nom || '';
+  document.getElementById('siteUrl').value  = s.url || '';
+  document.getElementById('siteCat').value  = s.categorie || '';
+  document.getElementById('siteDesc').value = s.description || '';
+  refreshCatList();
+  openModal('siteModal');
+};
+
+document.getElementById('addSiteHeaderBtn').addEventListener('click', openAddModal);
+document.getElementById('siteModalCancel').addEventListener('click', () => closeModal('siteModal'));
+
+document.getElementById('siteModalSave').addEventListener('click', () => {
+  const nom  = document.getElementById('siteNom').value.trim();
+  const url  = document.getElementById('siteUrl').value.trim();
+  const cat  = document.getElementById('siteCat').value.trim();
+  const desc = document.getElementById('siteDesc').value.trim();
+
+  if (!nom) { showToast('⚠ Le nom est obligatoire.'); return; }
+  if (!url || !url.startsWith('http')) { showToast('⚠ URL invalide (doit commencer par http://).'); return; }
+  if (!cat) { showToast('⚠ La catégorie est obligatoire.'); return; }
+
+  const site = {nom, url, categorie: cat, description: desc};
+
+  if (editIndex >= 0) {
+    sites[editIndex] = site;
+    showToast(`✅ "${nom}" modifié.`);
+  } else {
+    sites.push(site);
+    showToast(`✅ "${nom}" ajouté.`);
+  }
+
+  saveJSON(LS_SITES, sites);
+  closeModal('siteModal');
+  renderCatChips();
+  refreshCatFilter();
+  renderSites();
+});
+
+// Fermer modales au tap sur le backdrop
+['siteModal','shareModal','syncModal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => {
+    if (e.target.id === id) closeModal(id);
+  });
+});
+
+// ─── FAVORIS PANEL ───
+function renderFavsPanel(area) {
+  document.getElementById('resultsCount').style.display = 'none';
+  const n = favs.length;
+  area.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+      <h2 style="font-size:1rem; font-weight:700;">★ Mes favoris (${n})</h2>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="card-btn" style="min-height:36px; padding:0 12px;" onclick="exportFavs()">📤 Exporter</button>
+        <button class="card-btn" style="min-height:36px; padding:0 12px;" onclick="importFavs()">📥 Importer</button>
+        <button class="card-btn" style="min-height:36px; padding:0 12px; color:var(--error);" onclick="clearFavs()">🗑 Effacer</button>
+      </div>
+    </div>
+    <div class="panel-list" id="favsList"></div>`;
+
+  const list = document.getElementById('favsList');
+  if (n === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">★</div><h3>Aucun favori</h3><p>Ajoutez des sites en favori depuis l'onglet Recherche.</p></div>`;
+    return;
+  }
+  list.innerHTML = favs.map((f, i) => `
+    <div class="panel-item">
+      <div class="panel-item-icon">🌐</div>
+      <div class="panel-item-body">
+        <div class="panel-item-name">${esc(f.nom)}</div>
+        <div class="panel-item-sub">${esc(f.url)}</div>
+      </div>
+      <div class="panel-item-actions">
+        <button class="panel-item-btn" onclick="window.open('${esc(f.url)}','_blank','noopener')" title="Ouvrir">🌐</button>
+        <button class="panel-item-btn" onclick="removeFav(${i})" title="Retirer">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+window.removeFav = function(i) {
+  favs.splice(i, 1);
+  saveJSON(LS_FAVS, favs);
+  renderFavsPanel(document.getElementById('resultsArea'));
+  showToast('Retiré des favoris.');
+};
+
+window.exportFavs = function() {
+  const data = JSON.stringify(favs, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'videofinder_favoris.json';
+  a.click();
+  showToast('Favoris exportés.');
+};
+
+window.importFavs = function() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!Array.isArray(data)) throw new Error();
+        let n = 0;
+        data.forEach(f => { if (!isFav(f.url)) { favs.push(f); n++; } });
+        saveJSON(LS_FAVS, favs);
+        renderFavsPanel(document.getElementById('resultsArea'));
+        showToast(`✅ ${n} favori(s) importé(s).`);
+      } catch { showToast('❌ Fichier invalide.'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+};
+
+window.clearFavs = function() {
+  if (!confirm('Effacer tous les favoris ?')) return;
+  favs = [];
+  saveJSON(LS_FAVS, favs);
+  renderFavsPanel(document.getElementById('resultsArea'));
+  showToast('Favoris effacés.');
+};
+
+// ─── HISTORIQUE PANEL ───
+function addToHistory(site) {
+  history = history.filter(h => h.url !== site.url);
+  history.unshift({...site, date: new Date().toISOString()});
+  history = history.slice(0, MAX_HIST);
+  saveJSON(LS_HIST, history);
+}
+
+function formatDate(iso) {
+  try {
+    const dt = new Date(iso);
+    const diff = Date.now() - dt.getTime();
+    if (diff < 60000) return 'à l\'instant';
+    if (diff < 3600000) return `il y a ${Math.floor(diff/60000)} min`;
+    if (diff < 86400000) return `il y a ${Math.floor(diff/3600000)}h`;
+    if (diff < 172800000) return 'hier';
+    return `il y a ${Math.floor(diff/86400000)} jours`;
+  } catch { return ''; }
+}
+
+function renderHistoryPanel(area) {
+  document.getElementById('resultsCount').style.display = 'none';
+  area.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h2 style="font-size:1rem; font-weight:700;">🕐 Historique (${history.length})</h2>
+      <button class="card-btn" style="min-height:36px; padding:0 12px;" onclick="clearHistory()">🗑 Effacer</button>
+    </div>
+    <div class="panel-list" id="histList"></div>`;
+
+  const list = document.getElementById('histList');
+  if (history.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🕐</div><h3>Aucun historique</h3><p>Vos sites ouverts apparaîtront ici.</p></div>`;
+    return;
+  }
+  list.innerHTML = history.map((h, i) => `
+    <div class="panel-item">
+      <div class="panel-item-icon">🌐</div>
+      <div class="panel-item-body">
+        <div class="panel-item-name">${esc(h.nom || h.terme || '')}</div>
+        <div class="panel-item-sub">${formatDate(h.date)}</div>
+      </div>
+      <div class="panel-item-actions">
+        ${h.url ? `<button class="panel-item-btn" onclick="window.open('${esc(h.url)}','_blank','noopener')" title="Ouvrir">🌐</button>` : ''}
+        <button class="panel-item-btn" onclick="removeHistory(${i})" title="Supprimer">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+window.removeHistory = function(i) {
+  history.splice(i, 1);
+  saveJSON(LS_HIST, history);
+  renderHistoryPanel(document.getElementById('resultsArea'));
+};
+
+window.clearHistory = function() {
+  if (!confirm('Effacer tout l\'historique ?')) return;
+  history = [];
+  saveJSON(LS_HIST, history);
+  renderHistoryPanel(document.getElementById('resultsArea'));
+  showToast('Historique effacé.');
+};
+
+// ─── PARAMÈTRES PANEL ───
+function renderSettingsPanel(area) {
+  document.getElementById('resultsCount').style.display = 'none';
+  area.innerHTML = `
+    <h2 style="font-size:1rem; font-weight:700; margin-bottom:18px;">⚙️ Réglages</h2>
+
+    <div class="settings-section">
+      <div class="settings-title">Apparence</div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Thème sombre</div>
+          <div class="settings-row-sub">Interface claire ou sombre</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="themeToggle" ${currentTheme === 'dark' ? 'checked' : ''}/>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">Sites</div>
+      <div class="settings-row" style="cursor:pointer;" onclick="openAddModal(); switchTab('search');">
+        <div>
+          <div class="settings-row-label">➕ Ajouter un site</div>
+          <div class="settings-row-sub">Ajoutez un nouveau site à votre liste</div>
+        </div>
+        <span style="color:var(--muted);">›</span>
+      </div>
+      <div class="settings-row" style="cursor:pointer;" onclick="exportSites()">
+        <div>
+          <div class="settings-row-label">📤 Exporter les sites</div>
+          <div class="settings-row-sub">Sauvegardez vos sites en JSON</div>
+        </div>
+        <span style="color:var(--muted);">›</span>
+      </div>
+      <div class="settings-row" style="cursor:pointer;" onclick="importSites()">
+        <div>
+          <div class="settings-row-label">📥 Importer des sites</div>
+          <div class="settings-row-sub">Restaurez depuis un fichier JSON</div>
+        </div>
+        <span style="color:var(--muted);">›</span>
+      </div>
+      <div class="settings-row" style="cursor:pointer;" onclick="openSyncModal()">
+        <div>
+          <div class="settings-row-label">📱 Synchroniser</div>
+          <div class="settings-row-sub">Transférez vos sites via un code</div>
+        </div>
+        <span style="color:var(--muted);">›</span>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">Données</div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Sites enregistrés</div>
+          <div class="settings-row-sub">${sites.length} site(s)</div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Favoris</div>
+          <div class="settings-row-sub">${favs.length} favori(s)</div>
+        </div>
+      </div>
+      <div class="settings-row" style="cursor:pointer;" onclick="resetAll()">
+        <div>
+          <div class="settings-row-label" style="color:var(--error);">🗑 Tout effacer</div>
+          <div class="settings-row-sub">Supprime sites, favoris et historique</div>
+        </div>
+        <span style="color:var(--muted);">›</span>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">À propos</div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">VidéoFinder v1</div>
+          <div class="settings-row-sub">Gestionnaire de favoris vidéo — PWA</div>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('themeToggle').addEventListener('change', e => {
+    applyTheme(e.target.checked ? 'dark' : 'light');
+  });
+}
+
+window.exportSites = function() {
+  const blob = new Blob([JSON.stringify(sites, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'videofinder_sites.json';
+  a.click();
+  showToast('Sites exportés.');
+};
+
+window.importSites = function() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!Array.isArray(data)) throw new Error();
+        let n = 0;
+        data.forEach(s => { if (!sites.find(x => x.url === s.url)) { sites.push(s); n++; } });
+        saveJSON(LS_SITES, sites);
+        renderCatChips(); refreshCatFilter();
+        showToast(`✅ ${n} site(s) importé(s).`);
+        renderSettingsPanel(document.getElementById('resultsArea'));
+      } catch { showToast('❌ Fichier invalide.'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+};
+
+window.openSyncModal = function() {
+  const code = btoa(unescape(encodeURIComponent(JSON.stringify(sites))));
+  document.getElementById('syncExportCode').value = code;
+  openModal('syncModal');
+};
+
+window.resetAll = function() {
+  if (!confirm('Effacer TOUS les sites, favoris et historique ?\nCette action est irréversible.')) return;
+  sites = []; favs = []; history = [];
+  saveJSON(LS_SITES, sites); saveJSON(LS_FAVS, favs); saveJSON(LS_HIST, history);
+  renderCatChips(); refreshCatFilter();
+  showToast('Tout effacé.');
+  renderSettingsPanel(document.getElementById('resultsArea'));
+};
+
+document.getElementById('copySyncCode').addEventListener('click', () => {
+  const code = document.getElementById('syncExportCode').value;
+  navigator.clipboard?.writeText(code).then(() => showToast('Code copié !')).catch(() => showToast('Copie impossible.'));
+});
+
+document.getElementById('syncImportBtn').addEventListener('click', () => {
+  const raw = document.getElementById('syncImportInput').value.trim();
+  if (!raw) return;
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(atob(raw))));
+    if (!Array.isArray(data)) throw new Error();
+    let n = 0;
+    data.forEach(s => { if (!sites.find(x => x.url === s.url)) { sites.push(s); n++; } });
+    saveJSON(LS_SITES, sites);
+    renderCatChips(); refreshCatFilter();
+    closeModal('syncModal');
+    showToast(`✅ ${n} site(s) importé(s).`);
+  } catch { showToast('❌ Code invalide.'); }
+});
+
+document.getElementById('syncModalClose').addEventListener('click', () => closeModal('syncModal'));
+
+// ─── PWA INSTALL ───
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const banner = document.getElementById('install-banner');
+  banner.classList.add('show');
+});
+
+document.getElementById('install-btn').addEventListener('click', () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      document.getElementById('install-banner').classList.remove('show');
+    });
+  }
+});
+
+document.getElementById('install-dismiss').addEventListener('click', () => {
+  document.getElementById('install-banner').classList.remove('show');
+});
+
+// ─── SERVICE WORKER ───
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
